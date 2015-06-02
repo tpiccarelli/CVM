@@ -1,0 +1,98 @@
+cvm <- function (txtfile) {
+    
+    # Fixar diretório de trabalho para download, manuseio e arquivamento dos dados:
+    setwd(dir = "C:/Users/Tiago/Documents/Financeiro/R/CVM/Dados CVM")
+    
+    # Carregar packages "xlsx" e "XML":
+    library(package = xlsx)
+    library(package = XML)
+    
+    # Leitura dos dados oriundos da consulta CVM (data.frame [nrow = i, ncol = 7):
+    cvmdata <- read.table(file = txtfile)
+    
+    # Fixar diretório de trabalho para download, manuseio e arquivamento dos dados:
+    setwd(dir = "C:/Users/Tiago/Documents/Financeiro/R/CVM/Dados CVM")
+    
+    # Estruturação do endereço dos links para download dos arquivos:
+    col_url <- as.character(cvmdata[,2])
+    urls <- substr (x = col_url, start = 6, stop = 121)
+    
+    # Estruturação do código CVM para identificação das empresas:
+    col_codcvm <- as.character(cvmdata[,4])
+    codcvm <- substr (x = col_codcvm, start = 7, stop = 12)
+    
+    ## Cria arquivo Excel (desnecessário em caso de geração de arquivos "*.csv"):
+    ## wb <- createWorkbook()
+    
+    for (i in 1:(length(urls))) {
+        
+        # Nomeia arquivo:
+        filename <- paste(codcvm[i],sep = "",".zip")
+        
+        # Baixa arquivo:
+        download.file(url = urls[i], destfile = filename, mode = "wb")
+        
+        # Descompacta conteúdo baixado:
+        unzip(zipfile = filename)
+        
+        # Remove arquivo "*.zip":
+        file.remove(filename)
+        
+        # Renomeia extensão do arquivo "*.itr" para "*.zip":
+        file.rename(from = list.files(pattern = ".itr"), to = filename)
+        
+        # Descompacta conteúdo da nova pasta:
+        unzip(zipfile = filename)
+        
+        ### TRECHO ALGORITMO ANTERIOR, TALVEZ NÃO UTILIZADO AQUI:
+        # Transfere dados para data frame:
+        # dados<-xmlToDataFrame("InfoFinaDFin.xml")
+        
+        # Nomeia arquivo:
+        ### filename <- paste(codcvm[i],sep = "",".zip")
+        ### file.rename(from = list.files(pattern = ".itr"), to = filename) 
+        
+        # Ler o arquivo .xml:
+        cvm_xml <- xmlTreeParse(file = "./InfoFinaDFin.xml")
+            
+        # Gerar o nó XML:
+        raiz <- xmlRoot(x = cvm_xml)
+            
+        # Medir o comprimento dos dados XML:
+        linhas <- length(raiz)
+        
+        # Criar vetores para geração do data.frame:
+        contas <- vector(mode = numeric, length = linhas)
+        valores_BP <- vector(mode = numeric, length = linhas)
+        valores_DRE <- vector(mode = numeric, length = linhas)
+        
+        # Estrutura:
+        ## raiz [[x]][[y]][[z]]
+        ## onde:
+        ### [[x]]: nome da conta (x=1:length(raiz))
+        #### xmlName(raiz[[1]][[n]]): header da coluna (n=1:18)
+        ##### n=4: DescricaoConta1
+        ##### n=8: ValorConta2
+        ##### n=9: ValorConta3
+        ##### n=14: ValorConta8
+        ##### n=15: ValorConta9
+        ##### n=18: ValorConta12
+        ### [[y]]: Valor (4:DescricaoConta1; 8:ValorConta2; etc)
+        ### [[z]]: restrição para visualizar somente o elemento do código XML (z=1)
+        
+        # Preencher valores nos vetores:
+        for(j in 1:linhas){
+            contas[j] <- xmlValue(raiz[[j]][[4]][[1]])
+            valores_BP[j] <- as.numeric(xmlValue(raiz[[j]][[9]][[1]]))
+            valores_DRE[j] <- as.numeric(xmlValue(raiz[[j]][[15]][[1]]))
+        }
+        
+        # Criar data.table:
+        assign(x = codcvm[i], value = data.table(CodCVM=codcvm[i], DescricaoConta1=contas,Valor3=valores_BP, Valor9=valores_DRE))
+        
+        # Remove arquivos intermediários não utilizados:
+        file.remove(list.files(pattern = ".xml"))
+        file.remove(list.files(pattern = ".zip"))
+        file.remove(list.files(pattern = ".fca"))
+    }
+}
