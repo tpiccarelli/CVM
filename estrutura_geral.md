@@ -29,5 +29,32 @@ XXXXXXAAAAMMDDYNN.zip
         *.dca
         *.fca
         FormularioCadastral.xml
-        FormularioDemonstracaoFinanceiraITR.xml
-    
+        FormularioDemonstracaoFinanceiraDFP.xml
+
+# Escreve a função:
+
+cvm <- function(n){
+# obs.: n ~ 46000 (em 2014)
+
+# Define URL para download dos arquivos *.zp contendo o material em análise, sendo "n" o nº de registro do documento no sistema da CVM:
+URL <- paste0("http://www.rad.cvm.gov.br/ENETCONSULTA/frmDownloadDocumento.aspx?CodigoInstituicao=1&NumeroSequencialDocumento=", n)
+
+# Acessa o site de onde o arquivo *.zip é baixado automaticamente:
+browseURL(url = URL)
+
+# Lista arquivos *.zip disponíveis na pasta raiz e nomeia variável para extração e tratamento do seu conteúdo:
+nome_zip <- list.files(pattern = "*.zip)
+
+# Descompacta conteúdo baixado:
+unzip(nome_zip)
+
+# Remove arquivo "*.zip":
+file.remove(nome_zip)
+
+# Renomeia extensão do arquivo "*.itr" ou "*.dfp" para "*.zip":
+file.rename(from = list.files(pattern = ".itr"), to = nome_zip)
+file.rename(from = list.files(pattern = ".dfp"), to = nome_zip)
+
+# Descompacta conteúdo da nova pasta:
+unzip(nome_zip)
+}
