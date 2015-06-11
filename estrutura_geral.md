@@ -36,6 +36,11 @@ XXXXXXAAAAMMDDYNN.zip
 cvm <- function(n){
 # obs.: n ~ 46000 (em 2014)
 
+# Carrega packages:
+require()
+require()
+require(XML)
+
 # Define URL para download dos arquivos *.zp contendo o material em análise, sendo "n" o nº de registro do documento no sistema da CVM:
 URL <- paste0("http://www.rad.cvm.gov.br/ENETCONSULTA/frmDownloadDocumento.aspx?CodigoInstituicao=1&NumeroSequencialDocumento=", n)
 
@@ -57,4 +62,19 @@ file.rename(from = list.files(pattern = ".dfp"), to = nome_zip)
 
 # Descompacta conteúdo da nova pasta:
 unzip(nome_zip)
+
+# Extrai infos gerais dos dados baixados
+ccvm <- substr(x = nome_zip, start = 1, stop = 6)
+DataRef <- substr(x = nome_zip, start = 7, stop = 14)
+tipo_doc <- substr(x = nome_zip, start = 15, stop = 15)
+
+# Transfere dados para data frame:
+assign(x = ccvm, value = xmlToDataFrame("InfoFinaDFin.xml"))
+
+ # Remove arquivos intermediários não utilizados:
+file.remove(list.files(pattern = ".xml"))
+file.remove(list.files(pattern = ".zip"))
+file.remove(list.files(pattern = ".fca"))
+
+... CONTINUA!
 }
