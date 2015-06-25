@@ -1,0 +1,117 @@
+# Fixar diretório de trabalho para download, manuseio e arquivamento dos dados:
+setwd(dir = "C:/Users/Tiago/Documents/Financeiro/CVM/Dados CVM")
+
+# cvm <- function (txtfile) {
+    
+    # Carregar packages:
+    library(package = xlsx)
+    library(package = XML)
+    require(package = data.table)
+    require(package = dplyr)
+    require(package = RODBC)
+
+    # Leitura dos dados oriundos da consulta CVM (data.frame [nrow = i, ncol = 7):
+    cvmdata <- read.table(file = txtfile)
+    
+    # Estruturação do endereço dos links para download dos arquivos:
+    col_url <- as.character(cvmdata[,2])
+    urls <- substr (x = col_url, start = 6, stop = 121)
+    
+    # Estruturação do código CVM para identificação das empresas:
+    col_ccvm <- as.character(cvmdata[,4])
+    ccvm <- substr (x = col_ccvm, start = 7, stop = 12)
+    
+    # Objetos a serem usados para armazenamento dos dados:
+    info_fin <- data.table()
+    lista_consolid <- list()
+    
+    # Extração de dados do arquivo .zip baixado da CVM:
+    for (i in 1:(length(urls))) {
+        
+        # Nomeia arquivo:
+        filename <- paste(ccvm[i],sep = "",".zip")
+        
+        # Baixa arquivo:
+        download.file(url = urls[i], destfile = filename, mode = "wb")
+        
+        # Descompacta conteúdo baixado:
+        unzip(zipfile = filename)
+        
+        # Remove arquivo "*.zip":
+        file.remove(filename)
+        
+        # Renomeia extensão do arquivo "*.itr" para "*.zip":
+        try(expr = {
+            file.rename(from = list.files(pattern = ".itr"), to = filename)
+        }, silent = T)
+        # Obs.: a função "try" permite igorar erros (neste caso, ignora o erro que aponta inexistência de arquivo com extensão .itr)
+        
+        # Renomeia extensão do arquivo "*.dfp" para "*.zip":
+        try(expr = {
+            file.rename(from = list.files(pattern = ".dfp"), to = filename)
+        }, silent = T)
+        
+        # Descompacta conteúdo da nova pasta:
+        unzip(zipfile = filename)
+
+        # Transfere dados para data frame:
+        dados <- xmlToDataFrame("InfoFinaDFin.xml")
+        
+            ### OU
+            # Ler o arquivo .xml:
+#           cvm_xml <- xmlTreeParse(file = "./InfoFinaDFin.xml")
+            # Gerar o nó XML:
+#           raiz <- xmlRoot(x = cvm_xml) (ATÉ AQUI ESTÁ OK)
+            
+        # Criar vetores para geração do data.frame:
+#        DescricaoConta1 <- array(data=0, dim = length(raiz))
+#        ValorConta1 <- array(data=0, dim = length(raiz))
+#        ValorConta12 <- array(data=0, dim = length(raiz))
+        
+        for(j in 1:length(raiz)){
+            DescricaoConta1[j] <- as.character(xmlValue(raiz[[j]][[4]][[1]]), charset = iso-8859-1)}
+                # Converte caracteres especiais UTF-8 para caracteres latinos (ISO-8859-1)
+                DescricaoConta1[j] <- iconv(x = DescricaoConta1, from = "UTF-8", to = "ISO-8859-1")
+            ValorConta1[j] <- as.numeric(xmlValue(raiz[[j]][[7]][[1]]))
+            ValorConta2[j] <- as.numeric(xmlValue(raiz[[j]][[8]][[1]]))
+            ValorConta3[j] <- as.numeric(xmlValue(raiz[[j]][[9]][[1]]))
+            ValorConta4[j] <- as.numeric(xmlValue(raiz[[j]][[10]][[1]]))
+            ValorConta5[j] <- as.numeric(xmlValue(raiz[[j]][[11]][[1]]))
+            ValorConta6[j] <- as.numeric(xmlValue(raiz[[j]][[12]][[1]]))
+            ValorConta7[j] <- as.numeric(xmlValue(raiz[[j]][[13]][[1]]))
+            ValorConta8[j] <- as.numeric(xmlValue(raiz[[j]][[14]][[1]]))
+            ValorConta9[j] <- as.numeric(xmlValue(raiz[[j]][[15]][[1]]))
+            ValorConta10[j] <- as.numeric(xmlValue(raiz[[j]][[16]][[1]]))
+            ValorConta11[j] <- as.numeric(xmlValue(raiz[[j]][[17]][[1]]))
+            ValorConta12[j] <- as.numeric(xmlValue(raiz[[j]][[18]][[1]]))
+            }
+            # TESTE:
+        # Criar data.table:
+#        assign(x = ccvm[i], value = tbl_dt(data.table(ccvm=ccvm[i], DescricaoConta1=DescricaoConta1,ValorConta1=ValorConta1, ValorConta12=ValorConta12)))
+        
+        # Cria tbl_dt:
+        info_fin <- assign(x = ccvm[i], value = tbl_dt(data.table(dados))) %>%
+                    mutate(ccvm = ccvm[i]) %>%
+                    select(ccvm, DescricaoConta1, ValorConta1:ValorConta12)
+        
+        # É NECESSÁRIO CONVERTER DADOS EM ValorConta1:ValorConta12 EM AS.NUMERIC:
+            # Testes feitos (não hpuve êxito):
+            # info_fin[, ValorConta1:=as.numeric(ValorConta1)]
+            # OU for (j in 3:14) {head(gsub(pattern = ".0000000000", replacement = "", x = info_fin[[j]]))}
+        
+        # Lança info_fim para lista consolidatória:
+        lista_consolid[[i]] <- info_fin
+
+        # Exclui arquivos:
+        file.remove(list.files(pattern = ".xml"))
+        file.remove(list.files(pattern = ".zip"))
+        file.remove(list.files(pattern = ".fca"))
+        file.remove(list.files(pattern = ".fre"))
+        file.remove(list.files(pattern = ".dfp"))
+        file.remove(list.files(pattern = ".itr"))
+}
+    # Exclui objetos do environment:
+    rm(cvmdata, ccvm, col_ccvm, col_url, filename, i, urls, dados, info_fin)
+    
+    # Retorna a lista consolidatória no Global Environment (somente no caso de se usar uma função, ao invés de rodar o algoritmo de etapa em etapa):
+    # lista_consolidada <<- lista_consolid
