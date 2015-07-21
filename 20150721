@@ -1,0 +1,89 @@
+# Fixar diretório de trabalho para download, manuseio e arquivamento dos dados:
+setwd(dir = "D:/Users/TPBAR/Documents/CVM teste 20150720")
+
+cvm <- function (txtfile) {
+
+# Carregar packages:
+library(package = xlsx)
+library(package = XML)
+require(package = data.table)
+require(package = dplyr)
+require(package = RODBC)
+
+# Leitura dos dados oriundos da consulta CVM (data.frame [nrow = i, ncol = 7):
+cvmdata <- read.table(file = txtfile)
+
+# Estruturação do endereço dos links para download dos arquivos:
+col_url <- as.character(cvmdata[,2])
+urls <- substr (x = col_url, start = 6, stop = 121)
+
+# Estruturação do código CVM para identificação das empresas:
+col_ccvm <- as.character(cvmdata[,4])
+ccvm <- substr (x = col_ccvm, start = 7, stop = 12)
+
+# Objetos a serem usados para armazenamento dos dados:
+info_fin <- data.table()
+lista_consolid <- list()
+
+# Extração de dados do arquivo .zip baixado da CVM:
+for (i in 1:(length(urls))) {
+    
+    # Nomeia arquivo:
+    filename <- paste(ccvm[i],sep = "",".zip")
+    
+    # Baixa arquivo:
+    download.file(url = urls[i], destfile = filename, mode = "wb")
+    
+    # Descompacta conteúdo baixado:
+    unzip(zipfile = filename)
+    
+    # Remove arquivo "*.zip":
+    file.remove(filename)
+    
+    # Renomeia extensão do arquivo "*.itr" para "*.zip":
+    try(expr = {
+        file.rename(from = list.files(pattern = ".itr"), to = filename)
+    }, silent = T)
+    # Obs.: a função "try" permite igorar erros (neste caso, ignora o erro que aponta inexistência de arquivo com extensão .itr)
+    
+    # Renomeia extensão do arquivo "*.dfp" para "*.zip":
+    try(expr = {
+        file.rename(from = list.files(pattern = ".dfp"), to = filename)
+    }, silent = T)
+    
+    # Descompacta conteúdo da nova pasta:
+    unzip(zipfile = filename)
+    
+    # Transfere dados para data frame:
+    dados <- xmlToDataFrame("InfoFinaDFin.xml")
+    
+    # Cria tbl_dt:
+    info_fin <- tbl_dt(data.table(dados)) %>%
+        mutate(ccvm = ccvm[i]) %>%
+        select(ccvm, DescricaoConta1, ValorConta1:ValorConta12)
+    
+    # Lança info_fim para lista consolidatória:
+    lista_consolid[[i]] <- info_fin
+    names(lista_consolid)[i] <- ccvm[i]
+    
+    # Exclui arquivos:
+    file.remove(list.files(pattern = ".xml"))
+    file.remove(list.files(pattern = ".zip"))
+    file.remove(list.files(pattern = ".fca"))
+    file.remove(list.files(pattern = ".fre"))
+    file.remove(list.files(pattern = ".dfp"))
+    file.remove(list.files(pattern = ".itr"))
+    }
+    
+    # Exclui objetos do environment:
+    # rm(cvmdata, ccvm, col_ccvm, col_url, filename, i, urls, dados, info_fin)
+    
+    # Retorna a lista consolidatória no Global Environment (somente no caso de se usar uma função, ao invés de rodar o algoritmo de etapa em etapa):
+    lista_consolidada <<- lista_consolid
+}
+
+# Vetor de título das contas necessárias:
+contas_ativo <- c("Ativo Total", "Ativo Circulante", "Caixa e Equivalentes de Caixa", " Ativo Realizável a Longo Prazo", "Investimentos ", "Imobilizado", "Intangível")
+contas_passivo <- c("Passivo Circulante", " Empréstimos e Financiamentos", "Passivo Não Circulante", "Patrimônio Líquido Consolidado", "Participação dos Acionistas Não Controladores")
+contas_DRE <- c("Receita de Venda de Bens e/ou Serviços", "Resultado Bruto", "Despesas/Receitas Operacionais", "Resultado Antes do Resultado Financeiro e dos Tributos", "Resultado Financeiro", "Resultado Antes dos Tributos sobre o Lucro", "Resultado Líquido das Operações Continuadas", "Lucro/Prejuízo Consolidado do Período")
+contas_DFC <- c("Caixa Líquido Atividades Operacionais", "Caixa Líquido Atividades de Investimento", "Caixa Líquido Atividades de Financiamento", "Variação Cambial s/ Caixa e Equivalentes", "Aumento (Redução) de Caixa e Equivalentes", "Depreciação e Amortização")
