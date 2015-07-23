@@ -1,0 +1,41 @@
+# Exemplo: filtra apenas registros DescricaoConta = Ativo Total
+
+dt <- function (infos){
+    lista <- list()
+
+# Formatação dos dados: caracteres como "ISO" e números como "numeric"
+    for (i in 1:length(infos)){
+        df <- data.frame(infos[[i]])
+        ccvm <- df[,1]
+        DescricaoConta <- iconv(x = df[,2], from = "UTF-8", to = "ISO-8859-1")
+        ValorConta1 <- as.numeric(levels(df[,3]))[df[,3]]
+        ValorConta2 <- as.numeric(levels(df[,4]))[df[,4]]
+        ValorConta3 <- as.numeric(levels(df[,5]))[df[,5]]
+        ValorConta4 <- as.numeric(levels(df[,6]))[df[,6]]
+        ValorConta5 <- as.numeric(levels(df[,7]))[df[,7]]
+        ValorConta6 <- as.numeric(levels(df[,8]))[df[,8]]
+        ValorConta7 <- as.numeric(levels(df[,9]))[df[,9]]
+        ValorConta8 <- as.numeric(levels(df[,10]))[df[,10]]
+        ValorConta9 <- as.numeric(levels(df[,11]))[df[,11]]
+        ValorConta10 <- as.numeric(levels(df[,12]))[df[,12]]
+        ValorConta11 <- as.numeric(levels(df[,13]))[df[,13]]
+        ValorConta12 <- as.numeric(levels(df[,14]))[df[,14]]
+
+# Consolidação dos dados em data.table
+        dt <- tbl_dt(data.table(ccvm, DescricaoConta, ValorConta1, ValorConta2, ValorConta3, ValorConta4, ValorConta5, ValorConta6, ValorConta7, ValorConta8, ValorConta9, ValorConta10, ValorConta11, ValorConta12))
+        lista[[i]] <- dt
+        names(lista)[i] <- ccvm[i]
+    }
+    
+    # lista <<- lista
+    
+# Consulta: Ativo Total
+    at <- list()
+    
+    for (i in 1:length(lista)){
+        x <- filter(lista[[i]], DescricaoConta=="Ativo Total")
+        at[[i]] <- x
+    }
+# Retorna objeto AT
+    AT <<- at
+}
