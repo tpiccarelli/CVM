@@ -1,0 +1,151 @@
+# Fixar diretório de trabalho para download, manuseio e arquivamento dos dados:
+setwd(dir = "D:/Users/TPBAR/Documents/CVM teste 20150720")
+
+cvm <- function (txtfile) {
+
+# Carregar packages:
+library(package = xlsx)
+library(package = XML)
+require(package = data.table)
+require(package = dplyr)
+require(package = RODBC)
+
+# Leitura dos dados oriundos da consulta CVM (data.frame [nrow = i, ncol = 7):
+cvmdata <- read.table(file = txtfile)
+
+# Estruturação do endereço dos links para download dos arquivos:
+col_url <- as.character(cvmdata[,2])
+urls <- substr (x = col_url, start = 6, stop = 121)
+
+# Estruturação do código CVM para identificação das empresas:
+col_ccvm <- as.character(cvmdata[,4])
+ccvm <- substr (x = col_ccvm, start = 7, stop = 12)
+
+# Objetos a serem usados para armazenamento dos dados:
+info_fin <- data.table()
+lista <- list()
+
+    # Extração de dados do arquivo .zip baixado da CVM:
+    for (i in 1:(length(urls))) {
+        
+        # Nomeia arquivo:
+        filename <- paste(ccvm[i],sep = "",".zip")
+        
+        # Baixa arquivo:
+        download.file(url = urls[i], destfile = filename, mode = "wb")
+        
+        # Descompacta conteúdo baixado:
+        unzip(zipfile = filename)
+        
+        # Remove arquivo "*.zip":
+        file.remove(filename)
+        
+        # Renomeia extensão do arquivo "*.itr" para "*.zip":
+        try(expr = {
+            file.rename(from = list.files(pattern = ".itr"), to = filename)
+        }, silent = T)
+        # Obs.: a função "try" permite igorar erros (neste caso, ignora o erro que aponta inexistência de arquivo com extensão .itr)
+        
+        # Renomeia extensão do arquivo "*.dfp" para "*.zip":
+        try(expr = {
+            file.rename(from = list.files(pattern = ".dfp"), to = filename)
+        }, silent = T)
+        
+        # Descompacta conteúdo da nova pasta:
+        unzip(zipfile = filename)
+        
+        # Transfere dados para data frame:
+        dados <- xmlToDataFrame("InfoFinaDFin.xml")
+        
+        # Exclui arquivos:
+        file.remove(list.files(pattern = ".xml"))
+        file.remove(list.files(pattern = ".zip"))
+        file.remove(list.files(pattern = ".fca"))
+        file.remove(list.files(pattern = ".fre"))
+        file.remove(list.files(pattern = ".dfp"))
+        file.remove(list.files(pattern = ".itr"))
+        
+        # Cria tbl_dt:
+        info_fin <- tbl_dt(data.table(dados)) %>%
+            mutate(ccvm = ccvm[i]) %>%
+            select(ccvm, DescricaoConta1, ValorConta1:ValorConta12)
+        # Alterar UTF-8 para ISO
+        DescricaoConta <- data.table(DescricaoConta = iconv(x = info_fin$DescricaoConta1, from = "UTF-8", to = "ISO-8859-1"))
+        info_fin <- cbind(info_fin, DescricaoConta)
+        info_fin <- select(info_fin, ccvm, DescricaoConta, ValorConta2, ValorConta3, ValorConta4, ValorConta6)
+        
+        # Lança info_fin para lista consolidatória:
+        # lista[[i]] <- info_fin
+        # names(lista)[i] <- ccvm[i]
+        
+        # Criação de data.frames para Ativo, Passivo e DRE:
+        if (i==1){
+            ativo <- data.table()
+            passivo <- data.table()
+            DRE <- data.table()
+            DFC <- data.table()
+        }
+        
+        # Ativo:
+        at<- filter(info_fin, DescricaoConta=="Ativo Total" | DescricaoConta=="Ativo Circulante" | DescricaoConta=="Caixa e Equivalentes de Caixa" | DescricaoConta=="Ativo Realizavel a Longo Prazo" | DescricaoConta=="Investimentos" | DescricaoConta=="Imobilizado" | DescricaoConta=="Intangível")
+        ativo <- rbind(ativo, at)
+        
+        # Passivo:
+        pass <- filter(info_fin, DescricaoConta=="Passivo Circulante" | DescricaoConta=="Empréstimos e Financiamentos" | DescricaoConta=="Passivo Não Circulante" | DescricaoConta=="Patrimônio Líquido Consolidado" | DescricaoConta=="Participação dos Acionistas Não Controladores")
+        passivo <- rbind(passivo, pass)
+        
+        # DRE:
+        dre <- filter(info_fin, DescricaoConta=="Receita de Venda de Bens e/ou Serviços" | DescricaoConta=="Resultado Bruto" | DescricaoConta=="Despesas/Receitas Operacionais" | DescricaoConta=="Resultado Antes do Resultado Financeiro e dos Tributos" | DescricaoConta=="Resultado Financeiro" | DescricaoConta=="Resultado Antes dos Tributos sobre o Lucro" | DescricaoConta=="Resultado Líquido das Operações Continuadas" | DescricaoConta=="Lucro/Prejuízo Consolidado do Período")
+        DRE <- rbind(DRE, dre)
+        
+        # DFC:
+        dfc <- filter(info_fin, DescricaoConta=="Caixa Líquido Atividades Operacionais" | DescricaoConta=="Caixa Líquido Atividades de Investimento" | DescricaoConta=="Caixa Líquido Atividades de Financiamento" | DescricaoConta=="Variação Cambial s/ Caixa e Equivalentes" | DescricaoConta=="Aumento (Redução) de Caixa e Equivalentes" | DescricaoConta=="Depreciação e Amortização")
+        DFC <- rbind(DFC, dfc)
+    }
+    ativo <<- ativo
+    passivo <<- passivo
+    DRE <<- DRE
+    DFC <<- DFC
+    dfp <<- rbind(ativo, passivo, DRE, DFC)
+}
+    
+    
+    
+    
+    # Exclui objetos do environment:
+    # rm(cvmdata, ccvm, col_ccvm, col_url, filename, i, urls, dados, info_fin)
+    
+    # Formatação dos dados: caracteres como "ISO" e números como "numeric"
+    for (i in 1:length(lista)){
+        df <- data.frame(lista[[i]])
+        ccvm <- df[,1]
+        DescricaoConta <- iconv(x = df[,2], from = "UTF-8", to = "ISO-8859-1")
+        ValorConta1 <- as.numeric(levels(df[,3]))[df[,3]]
+        ValorConta2 <- as.numeric(levels(df[,4]))[df[,4]]
+        ValorConta3 <- as.numeric(levels(df[,5]))[df[,5]]
+        ValorConta4 <- as.numeric(levels(df[,6]))[df[,6]]
+        ValorConta5 <- as.numeric(levels(df[,7]))[df[,7]]
+        ValorConta6 <- as.numeric(levels(df[,8]))[df[,8]]
+        ValorConta7 <- as.numeric(levels(df[,9]))[df[,9]]
+        ValorConta8 <- as.numeric(levels(df[,10]))[df[,10]]
+        ValorConta9 <- as.numeric(levels(df[,11]))[df[,11]]
+        ValorConta10 <- as.numeric(levels(df[,12]))[df[,12]]
+        ValorConta11 <- as.numeric(levels(df[,13]))[df[,13]]
+        ValorConta12 <- as.numeric(levels(df[,14]))[df[,14]]
+    
+        # Consolidação dos dados em data frame
+        dfc <- data.frame(ccvm, DescricaoConta, ValorConta1, ValorConta2, ValorConta3, ValorConta4, ValorConta5, ValorConta6, ValorConta7, ValorConta8, ValorConta9, ValorConta10, ValorConta11, ValorConta12)
+        lista[[i]] <- dt
+        names(lista)[i] <- ccvm[i]
+        
+        
+    # Retorna a lista consolidatória no Global Environment (somente no caso de se usar uma função, ao invés de rodar o algoritmo de etapa em etapa):
+    lista <<- lista
+}
+    
+    ### OU
+    # Ler o arquivo .xml:
+    #           cvm_xml <- xmlTreeParse(file = "./InfoFinaDFin.xml")
+    # Gerar o nó XML:
+    #           raiz <- xmlRoot(x = cvm_xml) (ATÉ AQUI ESTÁ OK)
+    
