@@ -1,0 +1,118 @@
+# Fixar diretório de trabalho para download, manuseio e arquivamento dos dados:
+setwd(dir = "C:/Users/Tiago/Documents/Financeiro/CVM/Dados CVM")
+
+cvm <- function (txtfile) {
+    
+    # Carregar packages:
+    library(package = xlsx)
+    library(package = XML)
+    require(package = data.table)
+    require(package = dplyr)
+    require(package = RODBC)
+    
+    # Leitura dos dados oriundos da consulta CVM (data.frame [nrow = i, ncol = 7):
+    cvmdata <- read.table(file = txtfile)
+    
+    # Estruturação do endereço dos links para download dos arquivos:
+    col_url <- as.character(cvmdata[,2])
+    urls <- substr (x = col_url, start = 6, stop = 121)
+    
+    # Estruturação do código CVM para identificação das empresas:
+    col_ccvm <- as.character(cvmdata[,4])
+    ccvm <- substr (x = col_ccvm, start = 7, stop = 12)
+    
+    # Objetos a serem usados para armazenamento dos dados:
+    info_fin <- data.table()
+    lista <- list()
+    
+    # Extração de dados do arquivo .zip baixado da CVM:
+    for (i in 1:(length(urls))) {
+        
+        # Nomeia arquivo:
+        filename <- paste(ccvm[i],sep = "",".zip")
+        
+        # Baixa arquivo:
+        download.file(url = urls[i], destfile = filename, mode = "wb")
+        
+        # Descompacta conteúdo baixado:
+        unzip(zipfile = filename)
+        
+        # Remove arquivo "*.zip":
+        file.remove(filename)
+        
+        # Renomeia extensão do arquivo "*.itr" para "*.zip":
+        try(expr = {
+            file.rename(from = list.files(pattern = ".itr"), to = filename)
+        }, silent = T)
+        # Obs.: a função "try" permite igorar erros (neste caso, ignora o erro que aponta inexistência de arquivo com extensão .itr)
+        
+        # Renomeia extensão do arquivo "*.dfp" para "*.zip":
+        try(expr = {
+            file.rename(from = list.files(pattern = ".dfp"), to = filename)
+        }, silent = T)
+        
+        # Descompacta conteúdo da nova pasta:
+        unzip(zipfile = filename)
+        
+        # Transfere dados para data frame:
+        dados <- xmlToDataFrame("InfoFinaDFin.xml")
+        
+        # Exclui arquivos:
+        file.remove(list.files(pattern = ".xml"))
+        file.remove(list.files(pattern = ".zip"))
+        file.remove(list.files(pattern = ".fca"))
+        file.remove(list.files(pattern = ".fre"))
+        file.remove(list.files(pattern = ".dfp"))
+        file.remove(list.files(pattern = ".itr"))
+        
+        # Cria tbl_dt:
+        info_fin <- tbl_dt(data.table(dados)) %>%
+            mutate(ccvm = ccvm[i]) %>%
+            select(ccvm, DescricaoConta1, ValorConta1:ValorConta12)
+        # Alterar UTF-8 para ISO
+        DescricaoConta <- data.table(DescricaoConta = iconv(x = info_fin$DescricaoConta1, from = "UTF-8", to = "ISO-8859-1"))
+        info_fin <- cbind(info_fin, DescricaoConta)
+        info_fin <- select(info_fin, ccvm, DescricaoConta, ValorConta2, ValorConta3, ValorConta4, ValorConta5, ValorConta6)
+        
+        # Lança info_fin para lista consolidatória:
+        # lista[[i]] <- info_fin
+        # names(lista)[i] <- ccvm[i]
+        
+        # Criação de data.frames para Ativo, Passivo e DRE:
+        if (i==1){
+            ativo <- data.table()
+            passivo <- data.table()
+            DRE <- data.table()
+            DFC <- data.table()
+        }
+        
+        # Ativo:
+        at<- filter(info_fin, DescricaoConta=="Ativo Total" | DescricaoConta=="Ativo Circulante" | DescricaoConta=="Caixa e Equivalentes de Caixa" | DescricaoConta=="Ativo Realizavel a Longo Prazo" | DescricaoConta=="Investimentos" | DescricaoConta=="Imobilizado" | DescricaoConta=="Intangível")
+        ativo <- rbind(ativo, at)
+        ativo <- select(ccvm, DescricaoConta, ValorConta2, ValorConta3)
+        setnames(x = ativo, old = names(ativo), new = c("ccvm","DescricaoConta","30/06/2015","31/12/2014"))
+        
+        # Passivo:
+        pass <- filter(info_fin, DescricaoConta=="Passivo Circulante" | DescricaoConta=="Empréstimos e Financiamentos" | DescricaoConta=="Passivo Não Circulante" | DescricaoConta=="Patrimônio Líquido Consolidado" | DescricaoConta=="Participação dos Acionistas Não Controladores")
+        passivo <- rbind(passivo, pass)
+        passivo <- select(ccvm, DescricaoConta, ValorConta2, ValorConta3)
+        setnames(x = passivo, old = names(passivo), new = c("ccvm","DescricaoConta","30/06/2015","31/12/2014"))
+        
+        # DRE:
+        dre <- filter(info_fin, DescricaoConta=="Receita de Venda de Bens e/ou Serviços" | DescricaoConta=="Resultado Bruto" | DescricaoConta=="Despesas/Receitas Operacionais" | DescricaoConta=="Resultado Antes do Resultado Financeiro e dos Tributos" | DescricaoConta=="Resultado Financeiro" | DescricaoConta=="Resultado Antes dos Tributos sobre o Lucro" | DescricaoConta=="Resultado Líquido das Operações Continuadas" | DescricaoConta=="Lucro/Prejuízo Consolidado do Período")
+        DRE <- rbind(DRE, dre)
+        DRE <- select(ccvm, DescricaoConta, ValorConta2, ValorConta4,ValorConta5,ValorConta6)
+        setnames(x = DRE, old = names(DRE), new = c("ccvm","DescricaoConta","01/04/2015 a 30/06/2015","01/01/2015 a 30/06/2015", "01/04/2014 a 30/06/2014","01/01/2014 a 30/06/2014"))
+        
+        # DFC:
+        dfc <- filter(info_fin, DescricaoConta=="Caixa Líquido Atividades Operacionais" | DescricaoConta=="Caixa Líquido Atividades de Investimento" | DescricaoConta=="Caixa Líquido Atividades de Financiamento" | DescricaoConta=="Variação Cambial s/ Caixa e Equivalentes" | DescricaoConta=="Aumento (Redução) de Caixa e Equivalentes" | DescricaoConta=="Depreciação e Amortização")
+        DFC <- rbind(DFC, dfc)
+        DFC <- select(ccvm, DescricaoConta, ValorConta2, ValorConta4,ValorConta5,ValorConta6)
+        setnames(x = DFC, old = names(DFC), new = c("ccvm","DescricaoConta","01/01/2015 a 30/06/2015", "01/01/2014 a 30/06/2014"))
+    }
+    ativo <<- ativo
+    passivo <<- passivo
+    DRE <<- DRE
+    DFC <<- DFC
+    # dfp <<- rbind(ativo, passivo, DRE, DFC)
+}
