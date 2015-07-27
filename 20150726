@@ -25,6 +25,9 @@ cvm <- function (txtfile) {
     # Estruturação da data de referência do documento (não utilizado: seria usado para retornar títulos das colunas do Balanço Patrimonial):
     # col_dataref <- as.character(cvmdata[,5])
     # dataref <- substr (x = col_dataref, start = 10, stop = 19)
+    ### POSSO FAZER UM COMANDO if EM QUE SOMENTE LINKS DE DETERMINADA DATA SEJAM SUBMETIDOS AO LOOPING DESTE ALGORITMO: 
+    ### ASSIM ELIMINA-SE A NECESSIDADE DE APAGAR MANUALMENTE AS LINHAS CUJAS DATAS DIFEREM DO TRIMESTRE EM ANÁLISE
+    # if (dataref[i] == "DD/MM/AAAA"){...}
     
     # Objetos a serem usados para armazenamento dos dados:
     info_fin <- data.table()
