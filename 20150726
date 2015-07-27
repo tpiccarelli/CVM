@@ -1,5 +1,6 @@
 # Fixar diretório de trabalho para download, manuseio e arquivamento dos dados:
 setwd(dir = "C:/Users/Tiago/Documents/Financeiro/CVM/Dados CVM")
+setwd(dir = "D:/Users/TPBAR/Documents/CVM teste 20150720")
 
 cvm <- function (txtfile) {
     
@@ -20,6 +21,10 @@ cvm <- function (txtfile) {
     # Estruturação do código CVM para identificação das empresas:
     col_ccvm <- as.character(cvmdata[,4])
     ccvm <- substr (x = col_ccvm, start = 7, stop = 12)
+    
+    # Estruturação da data de referência do documento (não utilizado: seria usado para retornar títulos das colunas do Balanço Patrimonial):
+    # col_dataref <- as.character(cvmdata[,5])
+    # dataref <- substr (x = col_dataref, start = 10, stop = 19)
     
     # Objetos a serem usados para armazenamento dos dados:
     info_fin <- data.table()
@@ -88,32 +93,74 @@ cvm <- function (txtfile) {
         }
         
         # Ativo:
-        at<- filter(info_fin, DescricaoConta=="Ativo Total" | DescricaoConta=="Ativo Circulante" | DescricaoConta=="Caixa e Equivalentes de Caixa" | DescricaoConta=="Ativo Realizavel a Longo Prazo" | DescricaoConta=="Investimentos" | DescricaoConta=="Imobilizado" | DescricaoConta=="Intangível")
+        at <- filter(info_fin, DescricaoConta=="Ativo Total" | DescricaoConta=="Ativo Circulante" | DescricaoConta=="Caixa e Equivalentes de Caixa" | DescricaoConta=="Ativo Realizavel a Longo Prazo" | DescricaoConta=="Investimentos" | DescricaoConta=="Imobilizado" | DescricaoConta=="Intangível")
         ativo <- rbind(ativo, at)
-        # ativo <- select(ativo, ccvm, DescricaoConta, ValorConta2, ValorConta3)
-        # setnames(x = ativo, old = names(ativo), new = c("ccvm","DescricaoConta","30/06/2015","31/12/2014"))
         
         # Passivo:
         pass <- filter(info_fin, DescricaoConta=="Passivo Circulante" | DescricaoConta=="Empréstimos e Financiamentos" | DescricaoConta=="Passivo Não Circulante" | DescricaoConta=="Patrimônio Líquido Consolidado" | DescricaoConta=="Participação dos Acionistas Não Controladores")
         passivo <- rbind(passivo, pass)
-        # passivo <- select(passivo, ccvm, DescricaoConta, ValorConta2, ValorConta3)
-        # setnames(x = passivo, old = names(passivo), new = c("ccvm","DescricaoConta","30/06/2015","31/12/2014"))
         
         # DRE:
         dre <- filter(info_fin, DescricaoConta=="Receita de Venda de Bens e/ou Serviços" | DescricaoConta=="Resultado Bruto" | DescricaoConta=="Despesas/Receitas Operacionais" | DescricaoConta=="Resultado Antes do Resultado Financeiro e dos Tributos" | DescricaoConta=="Resultado Financeiro" | DescricaoConta=="Resultado Antes dos Tributos sobre o Lucro" | DescricaoConta=="Resultado Líquido das Operações Continuadas" | DescricaoConta=="Lucro/Prejuízo Consolidado do Período")
         DRE <- rbind(DRE, dre)
-        # DRE <- select(DRE, ccvm, DescricaoConta, ValorConta2, ValorConta4, ValorConta5, ValorConta6)
-        # setnames(x = DRE, old = names(DRE), new = c("ccvm","DescricaoConta","01/04/2015 a 30/06/2015","01/01/2015 a 30/06/2015", "01/04/2014 a 30/06/2014","01/01/2014 a 30/06/2014"))
         
         # DFC:
         dfc <- filter(info_fin, DescricaoConta=="Caixa Líquido Atividades Operacionais" | DescricaoConta=="Caixa Líquido Atividades de Investimento" | DescricaoConta=="Caixa Líquido Atividades de Financiamento" | DescricaoConta=="Variação Cambial s/ Caixa e Equivalentes" | DescricaoConta=="Aumento (Redução) de Caixa e Equivalentes" | DescricaoConta=="Depreciação e Amortização")
         DFC <- rbind(DFC, dfc)
-        # DFC <- select(DFC, ccvm, DescricaoConta, ValorConta4, ValorConta6)
-        # setnames(x = DFC, old = names(DFC), new = c("ccvm","DescricaoConta","01/01/2015 a 30/06/2015", "01/01/2014 a 30/06/2014"))
     }
+    
+    # Formata dados como valor e renomeia títulos das colunas, citando a data de referência dos dados:
+
+    # Ativo:
+    ativo <- as.data.frame(ativo)
+    # Definir títulos das colunas (datas)
+    "30/06/2015" <- as.numeric(levels(ativo[,3]))[ativo[,3]]
+    "31/12/2014" <- as.numeric(levels(ativo[,4]))[ativo[,4]]
+    ativo <- cbind(ativo, `30/06/2015`, `31/12/2014`)
+    ativo <- tbl_dt(data.table(ativo)) %>%
+        select(ccvm, DescricaoConta, `30/06/2015`, `31/12/2014`)    
+
+    # Passivo:
+    passivo <- as.data.frame(passivo)
+    "30/06/2015" <- as.numeric(levels(passivo[,3]))[passivo[,3]]
+    "31/12/2014" <- as.numeric(levels(passivo[,4]))[passivo[,4]]
+    passivo <- cbind(passivo, `30/06/2015`, `31/12/2014`)
+    passivo <- tbl_dt(data.table(passivo)) %>%
+        select(ccvm, DescricaoConta, `30/06/2015`, `31/12/2014`)
+
+    # DRE:
+    DRE <- as.data.frame(DRE)
+    "01/04/2015 a 30/06/2015" <- as.numeric(levels(DRE[,3]))[DRE[,3]]
+    "01/01/2015 a 30/06/2015" <- as.numeric(levels(DRE[,5]))[DRE[,5]]
+    "01/04/2014 a 30/06/2014" <- as.numeric(levels(DRE[,6]))[DRE[,6]]
+    "01/01/2014 a 30/06/2014" <- as.numeric(levels(DRE[,7]))[DRE[,7]]
+    DRE <- cbind(DRE, `01/04/2015 a 30/06/2015`, `01/01/2015 a 30/06/2015`, `01/04/2014 a 30/06/2014`, `01/01/2014 a 30/06/2014`)
+    DRE <- tbl_dt(data.table(DRE)) %>%
+        select(ccvm, DescricaoConta, `01/04/2015 a 30/06/2015`, `01/01/2015 a 30/06/2015`, `01/04/2014 a 30/06/2014`, `01/01/2014 a 30/06/2014`)
+    
+    # DFC:
+    DFC <- as.data.frame(DFC)
+    "01/01/2015 a 30/06/2015" <- as.numeric(levels(DFC[,5]))[DFC[,5]]
+    "01/01/2014 a 30/06/2014" <- as.numeric(levels(DFC[,7]))[DFC[,7]]
+    DFC <- cbind(DFC, `01/01/2015 a 30/06/2015`, `01/01/2014 a 30/06/2014`)
+    DFC <- tbl_dt(data.table(DFC)) %>%
+        select(ccvm, DescricaoConta, `01/01/2015 a 30/06/2015`, `01/01/2014 a 30/06/2014`)
+    
+    # Redação alternativa do algoritmo
+        # Seleciona apenas colunas contendo dados procurados:
+        #ativo <- select(ativo, ccvm, DescricaoConta, ValorConta2, ValorConta3)
+        #passivo <- select(passivo, ccvm, DescricaoConta, ValorConta2, ValorConta3)
+        #DRE <- select(DRE, ccvm, DescricaoConta, ValorConta2, ValorConta4, ValorConta5, ValorConta6)
+        #DFC <- select(DFC, ccvm, DescricaoConta, ValorConta4, ValorConta6)
+        
+        # Renomeia títulos das colunas, citando a data de referência dos dados:
+        #setnames(x = ativo, old = names(ativo), new = c("ccvm","DescricaoConta","30/06/2015","31/12/2014"))
+        #setnames(x = passivo, old = names(passivo), new = c("ccvm","DescricaoConta","30/06/2015","31/12/2014"))
+        #setnames(x = DRE, old = names(DRE), new = c("ccvm","DescricaoConta","01/04/2015 a 30/06/2015","01/01/2015 a 30/06/2015", "01/04/2014 a 30/06/2014","01/01/2014 a 30/06/2014"))
+        #setnames(x = DFC, old = names(DFC), new = c("ccvm","DescricaoConta","01/01/2015 a 30/06/2015", "01/01/2014 a 30/06/2014"))
+
     ativo <<- ativo
     passivo <<- passivo
     DRE <<- DRE
     DFC <<- DFC
-    # dfp <<- rbind(ativo, passivo, DRE, DFC)
 }
