@@ -14,20 +14,23 @@ cvm <- function (txtfile) {
     # Leitura dos dados oriundos da consulta CVM (data.frame [nrow = i, ncol = 7):
     cvmdata <- read.table(file = txtfile)
     
-    # Estruturação do endereço dos links para download dos arquivos:
-    col_url <- as.character(cvmdata[,2])
-    urls <- substr (x = col_url, start = 6, stop = 121)
+    # Estruturação das variáveis dos dados CVM:
     
-    # Estruturação do código CVM para identificação das empresas:
-    col_ccvm <- as.character(cvmdata[,4])
-    ccvm <- substr (x = col_ccvm, start = 7, stop = 12)
-    
-    # Estruturação da data de referência do documento (não utilizado: seria usado para retornar títulos das colunas do Balanço Patrimonial):
-    # col_dataref <- as.character(cvmdata[,5])
-    # dataref <- substr (x = col_dataref, start = 10, stop = 19)
-    ### POSSO FAZER UM COMANDO if EM QUE SOMENTE LINKS DE DETERMINADA DATA SEJAM SUBMETIDOS AO LOOPING DESTE ALGORITMO: 
-    ### ASSIM ELIMINA-SE A NECESSIDADE DE APAGAR MANUALMENTE AS LINHAS CUJAS DATAS DIFEREM DO TRIMESTRE EM ANÁLISE
-    # if (dataref[i] == "DD/MM/AAAA"){...}
+        # Endereço dos links para download dos arquivos:
+        col_url <- as.character(cvmdata[,2])
+        urls <- substr (x = col_url, start = 6, stop = 121)
+        
+        # Tipo de documento (ITR/DFP):
+        col_doc <- as.character(cvmdata[,3])
+        doc <- substr (x = col_doc, start = 12, stop = 14)
+        
+        # Código CVM para identificação das empresas:
+        col_ccvm <- as.character(cvmdata[,4])
+        ccvm <- substr (x = col_ccvm, start = 7, stop = 12)
+        
+        # Data de referência do documento:
+        col_dataref <- as.character(cvmdata[,5])
+        dataref <- substr (x = col_dataref, start = 10, stop = 19)
     
     # Objetos a serem usados para armazenamento dos dados:
     info_fin <- data.table()
@@ -36,52 +39,54 @@ cvm <- function (txtfile) {
     # Extração de dados do arquivo .zip baixado da CVM:
     for (i in 1:(length(urls))) {
         
-        # Nomeia arquivo:
-        filename <- paste(ccvm[i],sep = "",".zip")
-        
-        # Baixa arquivo:
-        download.file(url = urls[i], destfile = filename, mode = "wb")
-        
-        # Descompacta conteúdo baixado:
-        unzip(zipfile = filename)
-        
-        # Remove arquivo "*.zip":
-        file.remove(filename)
-        
-        # Renomeia extensão do arquivo "*.itr" para "*.zip":
-        try(expr = {
-            file.rename(from = list.files(pattern = ".itr"), to = filename)
-        }, silent = T)
-        # Obs.: a função "try" permite igorar erros (neste caso, ignora o erro que aponta inexistência de arquivo com extensão .itr)
-        
-        # Renomeia extensão do arquivo "*.dfp" para "*.zip":
-        try(expr = {
-            file.rename(from = list.files(pattern = ".dfp"), to = filename)
-        }, silent = T)
-        
-        # Descompacta conteúdo da nova pasta:
-        unzip(zipfile = filename)
-        
-        # Transfere dados para data frame:
-        dados <- xmlToDataFrame("InfoFinaDFin.xml")
-        
-        # Exclui arquivos:
-        file.remove(list.files(pattern = ".xml"))
-        file.remove(list.files(pattern = ".zip"))
-        file.remove(list.files(pattern = ".fca"))
-        file.remove(list.files(pattern = ".fre"))
-        file.remove(list.files(pattern = ".dfp"))
-        file.remove(list.files(pattern = ".itr"))
+        if (dataref[i] =="30/06/2015"){
+            # Nomeia arquivo:
+            filename <- paste(ccvm[i],sep = "",".zip")
+            
+            # Baixa arquivo:
+            download.file(url = urls[i], destfile = filename, mode = "wb")
+            
+            # Descompacta conteúdo baixado:
+            unzip(zipfile = filename)
+            
+            # Remove arquivo "*.zip":
+            file.remove(filename)
+            
+            # Renomeia extensão do arquivo "*.itr" para "*.zip":
+            try(expr = {
+                file.rename(from = list.files(pattern = ".itr"), to = filename)
+            }, silent = T)
+            # Obs.: a função "try" permite igorar erros (neste caso, ignora o erro que aponta inexistência de arquivo com extensão .itr)
+            
+            # Renomeia extensão do arquivo "*.dfp" para "*.zip":
+            try(expr = {
+                file.rename(from = list.files(pattern = ".dfp"), to = filename)
+            }, silent = T)
+            
+            # Descompacta conteúdo da nova pasta:
+            unzip(zipfile = filename)
+            
+            # Transfere dados para data frame:
+            dados <- xmlToDataFrame("InfoFinaDFin.xml")
+            
+            # Exclui arquivos:
+            file.remove(list.files(pattern = ".xml"))
+            file.remove(list.files(pattern = ".zip"))
+            file.remove(list.files(pattern = ".fca"))
+            file.remove(list.files(pattern = ".fre"))
+            file.remove(list.files(pattern = ".dfp"))
+            file.remove(list.files(pattern = ".itr"))
+        }
         
         # Cria tbl_dt:
         info_fin <- tbl_dt(data.table(dados)) %>%
-            mutate(ccvm = ccvm[i]) %>%
-            select(ccvm, DescricaoConta1, ValorConta1:ValorConta12)
+            mutate(doc = doc[i], dataref = dataref[i], ccvm = ccvm[i]) %>%
+            select(ccvm, DescricaoConta1, ValorConta1:ValorConta12, doc, dataref)
         # Alterar UTF-8 para ISO
         DescricaoConta <- data.table(DescricaoConta = iconv(x = info_fin$DescricaoConta1, from = "UTF-8", to = "ISO-8859-1"))
         info_fin <- cbind(info_fin, DescricaoConta)
         # Retorna objeto:
-        info_fin <- select(info_fin, ccvm, DescricaoConta, ValorConta2:ValorConta12)
+        info_fin <- select(info_fin, ccvm, DescricaoConta, ValorConta2:ValorConta12, doc, dataref)
         
         # Lança info_fin para lista consolidatória:
         # lista[[i]] <- info_fin
@@ -121,7 +126,7 @@ cvm <- function (txtfile) {
     "31/12/2014" <- as.numeric(levels(ativo[,4]))[ativo[,4]]
     ativo <- cbind(ativo, `30/06/2015`, `31/12/2014`)
     ativo <- tbl_dt(data.table(ativo)) %>%
-        select(ccvm, DescricaoConta, `30/06/2015`, `31/12/2014`)    
+        select(ccvm, DescricaoConta, `30/06/2015`, `31/12/2014`, doc, dataref)    
 
     # Passivo:
     passivo <- as.data.frame(passivo)
@@ -129,7 +134,7 @@ cvm <- function (txtfile) {
     "31/12/2014" <- as.numeric(levels(passivo[,4]))[passivo[,4]]
     passivo <- cbind(passivo, `30/06/2015`, `31/12/2014`)
     passivo <- tbl_dt(data.table(passivo)) %>%
-        select(ccvm, DescricaoConta, `30/06/2015`, `31/12/2014`)
+        select(ccvm, DescricaoConta, `30/06/2015`, `31/12/2014`, doc, dataref)
 
     # DRE:
     DRE <- as.data.frame(DRE)
@@ -139,7 +144,7 @@ cvm <- function (txtfile) {
     "01/01/2014 a 30/06/2014" <- as.numeric(levels(DRE[,7]))[DRE[,7]]
     DRE <- cbind(DRE, `01/04/2015 a 30/06/2015`, `01/01/2015 a 30/06/2015`, `01/04/2014 a 30/06/2014`, `01/01/2014 a 30/06/2014`)
     DRE <- tbl_dt(data.table(DRE)) %>%
-        select(ccvm, DescricaoConta, `01/04/2015 a 30/06/2015`, `01/01/2015 a 30/06/2015`, `01/04/2014 a 30/06/2014`, `01/01/2014 a 30/06/2014`)
+        select(ccvm, DescricaoConta, `01/04/2015 a 30/06/2015`, `01/01/2015 a 30/06/2015`, `01/04/2014 a 30/06/2014`, `01/01/2014 a 30/06/2014`, doc, dataref)
     
     # DFC:
     DFC <- as.data.frame(DFC)
@@ -147,7 +152,7 @@ cvm <- function (txtfile) {
     "01/01/2014 a 30/06/2014" <- as.numeric(levels(DFC[,7]))[DFC[,7]]
     DFC <- cbind(DFC, `01/01/2015 a 30/06/2015`, `01/01/2014 a 30/06/2014`)
     DFC <- tbl_dt(data.table(DFC)) %>%
-        select(ccvm, DescricaoConta, `01/01/2015 a 30/06/2015`, `01/01/2014 a 30/06/2014`)
+        select(ccvm, DescricaoConta, `01/01/2015 a 30/06/2015`, `01/01/2014 a 30/06/2014`, doc, dataref)
     
     # Redação alternativa do algoritmo
         # Seleciona apenas colunas contendo dados procurados:
