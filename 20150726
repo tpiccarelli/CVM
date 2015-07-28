@@ -20,6 +20,10 @@ cvm <- function (txtfile) {
         col_url <- as.character(cvmdata[,2])
         urls <- substr (x = col_url, start = 6, stop = 121)
         
+        # Número do registro de envio do documento:
+        col_ndoc <- as.character(cvmdata[,2])
+        ndoc <- substr (x = col_ndoc, start = 117, stop = 121)
+        
         # Tipo de documento (ITR/DFP):
         col_doc <- as.character(cvmdata[,3])
         doc <- substr (x = col_doc, start = 12, stop = 14)
@@ -39,7 +43,7 @@ cvm <- function (txtfile) {
     # Extração de dados do arquivo .zip baixado da CVM:
     for (i in 1:(length(urls))) {
         
-        if (dataref[i] =="30/06/2015"){
+#        if (dataref[i] =="30/06/2015"){
             # Nomeia arquivo:
             filename <- paste(ccvm[i],sep = "",".zip")
             
@@ -76,17 +80,17 @@ cvm <- function (txtfile) {
             file.remove(list.files(pattern = ".fre"))
             file.remove(list.files(pattern = ".dfp"))
             file.remove(list.files(pattern = ".itr"))
-        }
+#        }
         
         # Cria tbl_dt:
         info_fin <- tbl_dt(data.table(dados)) %>%
-            mutate(doc = doc[i], dataref = dataref[i], ccvm = ccvm[i]) %>%
-            select(ccvm, DescricaoConta1, ValorConta1:ValorConta12, doc, dataref)
+            mutate(ccvm = ccvm[i], doc = doc[i], dataref = dataref[i], ndoc = ndoc[i]) %>%
+            select(ccvm, DescricaoConta1, ValorConta1:ValorConta12, doc, dataref, ndoc)
         # Alterar UTF-8 para ISO
         DescricaoConta <- data.table(DescricaoConta = iconv(x = info_fin$DescricaoConta1, from = "UTF-8", to = "ISO-8859-1"))
         info_fin <- cbind(info_fin, DescricaoConta)
         # Retorna objeto:
-        info_fin <- select(info_fin, ccvm, DescricaoConta, ValorConta2:ValorConta12, doc, dataref)
+        info_fin <- select(info_fin, ccvm, DescricaoConta, ValorConta2:ValorConta12, doc, dataref, ndoc)
         
         # Lança info_fin para lista consolidatória:
         # lista[[i]] <- info_fin
@@ -126,7 +130,7 @@ cvm <- function (txtfile) {
     "31/12/2014" <- as.numeric(levels(ativo[,4]))[ativo[,4]]
     ativo <- cbind(ativo, `30/06/2015`, `31/12/2014`)
     ativo <- tbl_dt(data.table(ativo)) %>%
-        select(ccvm, DescricaoConta, `30/06/2015`, `31/12/2014`, doc, dataref)    
+        select(ccvm, DescricaoConta, `30/06/2015`, `31/12/2014`, doc, dataref, ndoc)    
 
     # Passivo:
     passivo <- as.data.frame(passivo)
@@ -134,7 +138,7 @@ cvm <- function (txtfile) {
     "31/12/2014" <- as.numeric(levels(passivo[,4]))[passivo[,4]]
     passivo <- cbind(passivo, `30/06/2015`, `31/12/2014`)
     passivo <- tbl_dt(data.table(passivo)) %>%
-        select(ccvm, DescricaoConta, `30/06/2015`, `31/12/2014`, doc, dataref)
+        select(ccvm, DescricaoConta, `30/06/2015`, `31/12/2014`, doc, dataref, ndoc)
 
     # DRE:
     DRE <- as.data.frame(DRE)
@@ -144,7 +148,7 @@ cvm <- function (txtfile) {
     "01/01/2014 a 30/06/2014" <- as.numeric(levels(DRE[,7]))[DRE[,7]]
     DRE <- cbind(DRE, `01/04/2015 a 30/06/2015`, `01/01/2015 a 30/06/2015`, `01/04/2014 a 30/06/2014`, `01/01/2014 a 30/06/2014`)
     DRE <- tbl_dt(data.table(DRE)) %>%
-        select(ccvm, DescricaoConta, `01/04/2015 a 30/06/2015`, `01/01/2015 a 30/06/2015`, `01/04/2014 a 30/06/2014`, `01/01/2014 a 30/06/2014`, doc, dataref)
+        select(ccvm, DescricaoConta, `01/04/2015 a 30/06/2015`, `01/01/2015 a 30/06/2015`, `01/04/2014 a 30/06/2014`, `01/01/2014 a 30/06/2014`, doc, dataref, ndoc)
     
     # DFC:
     DFC <- as.data.frame(DFC)
@@ -152,7 +156,7 @@ cvm <- function (txtfile) {
     "01/01/2014 a 30/06/2014" <- as.numeric(levels(DFC[,7]))[DFC[,7]]
     DFC <- cbind(DFC, `01/01/2015 a 30/06/2015`, `01/01/2014 a 30/06/2014`)
     DFC <- tbl_dt(data.table(DFC)) %>%
-        select(ccvm, DescricaoConta, `01/01/2015 a 30/06/2015`, `01/01/2014 a 30/06/2014`, doc, dataref)
+        select(ccvm, DescricaoConta, `01/01/2015 a 30/06/2015`, `01/01/2014 a 30/06/2014`, doc, dataref, ndoc)
     
     # Redação alternativa do algoritmo
         # Seleciona apenas colunas contendo dados procurados:
