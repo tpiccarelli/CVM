@@ -9,6 +9,8 @@ cvm <- function (txtfile, tipo_doc, data_ref){
     require(package = data.table)
     require(package = dplyr)
     require(package = RODBC)
+
+### PASSO 1: ESTRUTURAR BANCO DE DADOS DAS INFORMAÇÕES RETORNADAS PELA CONSULTA CVM
     
     # Leitura dos dados oriundos da consulta CVM (data.frame [nrow = i, ncol = 7):
     cvmdata <- read.table(file = txtfile)
@@ -35,10 +37,12 @@ cvm <- function (txtfile, tipo_doc, data_ref){
         col_dataref <- as.character(cvmdata[,5])
         dataref <- substr (x = col_dataref, start = 10, stop = 19)
     
-        # Cria data.frame contendo objetos previamente criados:
-        df <- data.frame(ccvm, doc, dataref, ndoc, urls) %>%
-            # Seleciona tipo de documento de interesse e data de referência:
-            filter(doc == tipo_doc, dataref == data_ref)
+    # Cria data.frame contendo objetos previamente criados:
+    df <- data.frame(ccvm, doc, dataref, ndoc, urls) %>%
+        # Seleciona tipo de documento de interesse e data de referência:
+        filter(doc == tipo_doc, dataref == data_ref)
+
+### PASSO 2: BAIXAR DADOS FINANCEIROS BRUTOS
     
     # Objetos a serem usados para armazenamento dos dados:
     info_fin <- data.table()
@@ -91,7 +95,7 @@ cvm <- function (txtfile, tipo_doc, data_ref){
         DescricaoConta <- data.table(DescricaoConta = iconv(x = info_fin$DescricaoConta1, from = "UTF-8", to = "ISO-8859-1"))
         info_fin <- cbind(info_fin, DescricaoConta)
         # Retorna objeto:
-        info_fin <- select(info_fin, ccvm, DescricaoConta, ValorConta2:ValorConta12, doc, dataref, ndoc)
+        info_fin <- select(info_fin, ccvm, DescricaoConta, ValorConta1:ValorConta12, doc, dataref, ndoc)
         
         # Lança info_fin para lista consolidatória:
         # lista[[i]] <- info_fin
@@ -122,43 +126,68 @@ cvm <- function (txtfile, tipo_doc, data_ref){
         DFC <- rbind(DFC, dfc)
     }
     
+    # Opcional: retorna valores brutos em lista consolidatória:
+#    lista <<- list(ativo, passivo, DRE, DFC)
+#}
+
+### PASSO 3: TRATAMENTO/FILTRO DOS DADOS FINANCEIROS
+
     # Formata dados como valor e renomeia títulos das colunas, citando a data de referência dos dados:
     
-    # Ativo:
-    ativo <- as.data.frame(ativo)
-    # Definir títulos das colunas (datas)
-    ValorConta2 <- as.numeric(levels(ativo[,3]))[ativo[,3]]
-    ValorConta3 <- as.numeric(levels(ativo[,4]))[ativo[,4]]
-    ativo <- cbind(ativo, ValorConta2, ValorConta3)
-    ativo <- tbl_dt(data.table(ativo)) %>%
-        select(ccvm, DescricaoConta, ValorConta2, ValorConta3, doc, dataref, ndoc)    
-    
-    # Passivo:
-    passivo <- as.data.frame(passivo)
-    ValorConta2 <- as.numeric(levels(passivo[,3]))[passivo[,3]]
-    ValorConta3 <- as.numeric(levels(passivo[,4]))[passivo[,4]]
-    passivo <- cbind(passivo, ValorConta2, ValorConta3)
-    passivo <- tbl_dt(data.table(passivo)) %>%
-        select(ccvm, DescricaoConta, ValorConta2, ValorConta3, doc, dataref, ndoc)
-    
-    # DRE:
-    DRE <- as.data.frame(DRE)
-    ValorConta2 <- as.numeric(levels(DRE[,3]))[DRE[,3]]
-    ValorConta4 <- as.numeric(levels(DRE[,5]))[DRE[,5]]
-    ValorConta5 <- as.numeric(levels(DRE[,6]))[DRE[,6]]
-    ValorConta6 <- as.numeric(levels(DRE[,7]))[DRE[,7]]
-    DRE <- cbind(DRE, ValorConta2, ValorConta4, ValorConta5, ValorConta6)
-    DRE <- tbl_dt(data.table(DRE)) %>%
-        select(ccvm, DescricaoConta, ValorConta2, ValorConta4, ValorConta5, ValorConta6, doc, dataref, ndoc)
-    
-    # DFC:
-    DFC <- as.data.frame(DFC)
-    ValorConta4 <- as.numeric(levels(DFC[,5]))[DFC[,5]]
-    ValorConta6 <- as.numeric(levels(DFC[,7]))[DFC[,7]]
-    DFC <- cbind(DFC, ValorConta4, ValorConta6)
-    DFC <- tbl_dt(data.table(DFC)) %>%
-        select(ccvm, DescricaoConta, ValorConta4, ValorConta6, doc, dataref, ndoc)
-    
+        # Ativo:
+        ativo <- as.data.frame(ativo)
+        # Definir títulos das colunas (datas)
+        Valor_Conta1 <- as.numeric(levels(ativo[,3]))[ativo[,3]]
+        Valor_Conta2 <- as.numeric(levels(ativo[,4]))[ativo[,4]]
+        Valor_Conta3 <- as.numeric(levels(ativo[,5]))[ativo[,5]]
+        ativo <- cbind(ativo, Valor_Conta1, Valor_Conta2, Valor_Conta3)
+        ativo <- tbl_dt(data.table(ativo))
+        if(tipo_doc=="ITR")
+            ativo <- select(ativo, ccvm, DescricaoConta, Valor_Conta2, Valor_Conta3, doc, dataref, ndoc)
+        if(tipo_doc=="DFP")
+            ativo <- select(ativo, ccvm, DescricaoConta, Valor_Conta1, Valor_Conta2, Valor_Conta3, doc, dataref, ndoc)
+        
+        # Passivo:
+        passivo <- as.data.frame(passivo)
+        Valor_Conta1 <- as.numeric(levels(passivo[,3]))[passivo[,3]]
+        Valor_Conta2 <- as.numeric(levels(passivo[,4]))[passivo[,4]]
+        Valor_Conta3 <- as.numeric(levels(passivo[,5]))[passivo[,5]]
+        passivo <- cbind(passivo, Valor_Conta1, Valor_Conta2, Valor_Conta3)
+        passivo <- tbl_dt(data.table(passivo))
+        if(tipo_doc=="ITR")
+            passivo <- select(passivo, ccvm, DescricaoConta, Valor_Conta2, Valor_Conta3, doc, dataref, ndoc)
+        if(tipo_doc=="DFP")
+            passivo <- select(passivo, ccvm, DescricaoConta, Valor_Conta1, Valor_Conta2, Valor_Conta3, doc, dataref, ndoc)
+            
+        # DRE:
+        DRE <- as.data.frame(DRE)
+        Valor_Conta1 <- as.numeric(levels(DRE[,3]))[DRE[,3]]
+        Valor_Conta2 <- as.numeric(levels(DRE[,4]))[DRE[,4]]
+        Valor_Conta3 <- as.numeric(levels(DRE[,5]))[DRE[,5]]
+        Valor_Conta4 <- as.numeric(levels(DRE[,6]))[DRE[,6]]
+        Valor_Conta5 <- as.numeric(levels(DRE[,7]))[DRE[,7]]
+        Valor_Conta6 <- as.numeric(levels(DRE[,8]))[DRE[,8]]
+        DRE <- cbind(DRE, Valor_Conta1, Valor_Conta2, Valor_Conta3, Valor_Conta4, Valor_Conta5, Valor_Conta6)
+        DRE <- tbl_dt(data.table(DRE))
+        if(tipo_doc=="ITR")
+            DRE <- select(DRE, ccvm, DescricaoConta, Valor_Conta2, Valor_Conta4, Valor_Conta5, Valor_Conta6, doc, dataref, ndoc)
+        if(tipo_doc=="DFP")
+            DRE <- select(DRE, ccvm, DescricaoConta, Valor_Conta1, Valor_Conta2, Valor_Conta3, doc, dataref, ndoc)
+
+        # DFC:
+        DFC <- as.data.frame(DFC)
+        Valor_Conta1 <- as.numeric(levels(DFC[,3]))[DFC[,3]]
+        Valor_Conta2 <- as.numeric(levels(DFC[,4]))[DFC[,4]]
+        Valor_Conta3 <- as.numeric(levels(DFC[,5]))[DFC[,5]]
+        Valor_Conta4 <- as.numeric(levels(DFC[,6]))[DFC[,6]]
+        Valor_Conta6 <- as.numeric(levels(DFC[,8]))[DFC[,8]]
+        DFC <- cbind(DFC, Valor_Conta1, Valor_Conta2, Valor_Conta3, Valor_Conta4, Valor_Conta6)
+        DFC <- tbl_dt(data.table(DFC))
+        if(tipo_doc=="ITR")
+            DFC <- select(DFC, ccvm, DescricaoConta, Valor_Conta4, Valor_Conta6, doc, dataref, ndoc)
+        if(tipo_doc=="DFP")
+            DFC <- select(DFC, ccvm, DescricaoConta, Valor_Conta1, Valor_Conta2, Valor_Conta3, doc, dataref, ndoc)
+
     # Redação alternativa do algoritmo
     # Seleciona apenas colunas contendo dados procurados:
     #ativo <- select(ativo, ccvm, DescricaoConta, ValorConta2, ValorConta3)
