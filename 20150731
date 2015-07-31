@@ -1,0 +1,180 @@
+# Fixar diretório de trabalho para download, manuseio e arquivamento dos dados:
+setwd(dir = "C:/Users/Tiago/Documents/Financeiro/CVM/Dados CVM")
+
+cvm <- function (txtfile, tipo_doc, data_ref){
+    
+    # Carregar packages:
+    library(package = xlsx)
+    library(package = XML)
+    require(package = data.table)
+    require(package = dplyr)
+    require(package = RODBC)
+    
+    # Leitura dos dados oriundos da consulta CVM (data.frame [nrow = i, ncol = 7):
+    cvmdata <- read.table(file = txtfile)
+    
+    # Estruturação das variáveis dos dados CVM:
+    
+        # Endereço dos links para download dos arquivos:
+        col_url <- as.character(cvmdata[,2])
+        urls <- substr (x = col_url, start = 6, stop = 121)
+        
+        # Número do registro de envio do documento:
+        col_ndoc <- as.character(cvmdata[,2])
+        ndoc <- substr (x = col_ndoc, start = 117, stop = 121)
+        
+        # Tipo de documento (ITR/DFP):
+        col_doc <- as.character(cvmdata[,3])
+        doc <- substr (x = col_doc, start = 12, stop = 14)
+        
+        # Código CVM para identificação das empresas:
+        col_ccvm <- as.character(cvmdata[,4])
+        ccvm <- substr (x = col_ccvm, start = 7, stop = 12)
+        
+        # Data de referência do documento:
+        col_dataref <- as.character(cvmdata[,5])
+        dataref <- substr (x = col_dataref, start = 10, stop = 19)
+    
+        # Cria data.frame contendo objetos previamente criados:
+        df <- data.frame(ccvm, doc, dataref, ndoc, urls) %>%
+            # Seleciona tipo de documento de interesse e data de referência:
+            filter(doc == tipo_doc, dataref == data_ref)
+    
+    # Objetos a serem usados para armazenamento dos dados:
+    info_fin <- data.table()
+    
+    # Extração de dados do arquivo .zip baixado da CVM:
+    for (i in 1:(nrow(df))) {
+        
+        # Nomeia arquivo:
+        filename <- paste(df[i,1],sep = "",".zip")
+        
+        # Baixa arquivo:
+        download.file(url = as.character(df[[i,5]]), destfile = filename, mode = "wb")
+        
+        # Descompacta conteúdo baixado:
+        unzip(zipfile = filename)
+        
+        # Remove arquivo "*.zip":
+        file.remove(filename)
+        
+        # Renomeia extensão do arquivo "*.itr" para "*.zip":
+        try(expr = {
+            file.rename(from = list.files(pattern = ".itr"), to = filename)
+        }, silent = T)
+        # Obs.: a função "try" permite igorar erros (neste caso, ignora o erro que aponta inexistência de arquivo com extensão .itr)
+        
+        # Renomeia extensão do arquivo "*.dfp" para "*.zip":
+        try(expr = {
+            file.rename(from = list.files(pattern = ".dfp"), to = filename)
+        }, silent = T)
+        
+        # Descompacta conteúdo da nova pasta:
+        unzip(zipfile = filename)
+        
+        # Transfere dados para data frame:
+        dados <- xmlToDataFrame("InfoFinaDFin.xml")
+        
+        # Exclui arquivos:
+        file.remove(list.files(pattern = ".xml"))
+        file.remove(list.files(pattern = ".zip"))
+        file.remove(list.files(pattern = ".fca"))
+        file.remove(list.files(pattern = ".fre"))
+        file.remove(list.files(pattern = ".dfp"))
+        file.remove(list.files(pattern = ".itr"))
+        
+        # Cria tbl_dt:
+        info_fin <- tbl_dt(data.table(dados)) %>%
+            mutate(ccvm = df[i,1], doc = df[i,2], dataref = df[i,3], ndoc = df[i,4]) %>%
+            select(ccvm, DescricaoConta1, ValorConta1:ValorConta12, doc, dataref, ndoc)
+        # Alterar UTF-8 para ISO
+        DescricaoConta <- data.table(DescricaoConta = iconv(x = info_fin$DescricaoConta1, from = "UTF-8", to = "ISO-8859-1"))
+        info_fin <- cbind(info_fin, DescricaoConta)
+        # Retorna objeto:
+        info_fin <- select(info_fin, ccvm, DescricaoConta, ValorConta2:ValorConta12, doc, dataref, ndoc)
+        
+        # Lança info_fin para lista consolidatória:
+        # lista[[i]] <- info_fin
+        # names(lista)[i] <- ccvm[i]
+        
+        # Criação de data.tables para Ativo, Passivo e DRE:
+        if (i==1){
+            ativo <- data.table()
+            passivo <- data.table()
+            DRE <- data.table()
+            DFC <- data.table()
+        }
+        
+        # Ativo:
+        at <- filter(info_fin, DescricaoConta=="Ativo Total" | DescricaoConta=="Ativo Circulante" | DescricaoConta=="Caixa e Equivalentes de Caixa" | DescricaoConta=="Ativo Realizavel a Longo Prazo" | DescricaoConta=="Investimentos" | DescricaoConta=="Imobilizado" | DescricaoConta=="Intangível")
+        ativo <- rbind(ativo, at)
+        
+        # Passivo:
+        pass <- filter(info_fin, DescricaoConta=="Passivo Circulante" | DescricaoConta=="Empréstimos e Financiamentos" | DescricaoConta=="Passivo Não Circulante" | DescricaoConta=="Patrimônio Líquido Consolidado" | DescricaoConta=="Participação dos Acionistas Não Controladores")
+        passivo <- rbind(passivo, pass)
+        
+        # DRE:
+        dre <- filter(info_fin, DescricaoConta=="Receita de Venda de Bens e/ou Serviços" | DescricaoConta=="Resultado Bruto" | DescricaoConta=="Despesas/Receitas Operacionais" | DescricaoConta=="Resultado Antes do Resultado Financeiro e dos Tributos" | DescricaoConta=="Resultado Financeiro" | DescricaoConta=="Resultado Antes dos Tributos sobre o Lucro" | DescricaoConta=="Resultado Líquido das Operações Continuadas" | DescricaoConta=="Lucro/Prejuízo Consolidado do Período")
+        DRE <- rbind(DRE, dre)
+        
+        # DFC:
+        dfc <- filter(info_fin, DescricaoConta=="Caixa Líquido Atividades Operacionais" | DescricaoConta=="Caixa Líquido Atividades de Investimento" | DescricaoConta=="Caixa Líquido Atividades de Financiamento" | DescricaoConta=="Variação Cambial s/ Caixa e Equivalentes" | DescricaoConta=="Aumento (Redução) de Caixa e Equivalentes" | DescricaoConta=="Depreciação e Amortização")
+        DFC <- rbind(DFC, dfc)
+    }
+    
+    # Formata dados como valor e renomeia títulos das colunas, citando a data de referência dos dados:
+    
+    # Ativo:
+    ativo <- as.data.frame(ativo)
+    # Definir títulos das colunas (datas)
+    ValorConta2 <- as.numeric(levels(ativo[,3]))[ativo[,3]]
+    ValorConta3 <- as.numeric(levels(ativo[,4]))[ativo[,4]]
+    ativo <- cbind(ativo, ValorConta2, ValorConta3)
+    ativo <- tbl_dt(data.table(ativo)) %>%
+        select(ccvm, DescricaoConta, ValorConta2, ValorConta3, doc, dataref, ndoc)    
+    
+    # Passivo:
+    passivo <- as.data.frame(passivo)
+    ValorConta2 <- as.numeric(levels(passivo[,3]))[passivo[,3]]
+    ValorConta3 <- as.numeric(levels(passivo[,4]))[passivo[,4]]
+    passivo <- cbind(passivo, ValorConta2, ValorConta3)
+    passivo <- tbl_dt(data.table(passivo)) %>%
+        select(ccvm, DescricaoConta, ValorConta2, ValorConta3, doc, dataref, ndoc)
+    
+    # DRE:
+    DRE <- as.data.frame(DRE)
+    ValorConta2 <- as.numeric(levels(DRE[,3]))[DRE[,3]]
+    ValorConta4 <- as.numeric(levels(DRE[,5]))[DRE[,5]]
+    ValorConta5 <- as.numeric(levels(DRE[,6]))[DRE[,6]]
+    ValorConta6 <- as.numeric(levels(DRE[,7]))[DRE[,7]]
+    DRE <- cbind(DRE, ValorConta2, ValorConta4, ValorConta5, ValorConta6)
+    DRE <- tbl_dt(data.table(DRE)) %>%
+        select(ccvm, DescricaoConta, ValorConta2, ValorConta4, ValorConta5, ValorConta6, doc, dataref, ndoc)
+    
+    # DFC:
+    DFC <- as.data.frame(DFC)
+    ValorConta4 <- as.numeric(levels(DFC[,5]))[DFC[,5]]
+    ValorConta6 <- as.numeric(levels(DFC[,7]))[DFC[,7]]
+    DFC <- cbind(DFC, ValorConta4, ValorConta6)
+    DFC <- tbl_dt(data.table(DFC)) %>%
+        select(ccvm, DescricaoConta, ValorConta4, ValorConta6, doc, dataref, ndoc)
+    
+    # Redação alternativa do algoritmo
+    # Seleciona apenas colunas contendo dados procurados:
+    #ativo <- select(ativo, ccvm, DescricaoConta, ValorConta2, ValorConta3)
+    #passivo <- select(passivo, ccvm, DescricaoConta, ValorConta2, ValorConta3)
+    #DRE <- select(DRE, ccvm, DescricaoConta, ValorConta2, ValorConta4, ValorConta5, ValorConta6)
+    #DFC <- select(DFC, ccvm, DescricaoConta, ValorConta4, ValorConta6)
+    
+    # Renomeia títulos das colunas, citando a data de referência dos dados:
+    #setnames(x = ativo, old = names(ativo), new = c("ccvm","DescricaoConta","30/06/2015","31/12/2014"))
+    #setnames(x = passivo, old = names(passivo), new = c("ccvm","DescricaoConta","30/06/2015","31/12/2014"))
+    #setnames(x = DRE, old = names(DRE), new = c("ccvm","DescricaoConta","01/04/2015 a 30/06/2015","01/01/2015 a 30/06/2015", "01/04/2014 a 30/06/2014","01/01/2014 a 30/06/2014"))
+    #setnames(x = DFC, old = names(DFC), new = c("ccvm","DescricaoConta","01/01/2015 a 30/06/2015", "01/01/2014 a 30/06/2014"))
+    
+    lista <<- list(ativo, passivo, DRE, DFC)
+    #ativo <<- ativo
+    #passivo <<- passivo
+    #DRE <<- DRE
+    #DFC <<- DFC
+}
