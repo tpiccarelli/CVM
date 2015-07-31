@@ -10,7 +10,7 @@ cvm <- function (txtfile, tipo_doc, data_ref){
     require(package = dplyr)
     require(package = RODBC)
 
-### PASSO 1: ESTRUTURAR BANCO DE DADOS DAS INFORMAÇÕES RETORNADAS PELA CONSULTA CVM
+### PASSO 1: ESTRUTURAR BANCO DE DADOS DO DOWNLOAD MÚLTIPLO CVM
     
     # Leitura dos dados oriundos da consulta CVM (data.frame [nrow = i, ncol = 7):
     cvmdata <- read.table(file = txtfile)
@@ -38,12 +38,17 @@ cvm <- function (txtfile, tipo_doc, data_ref){
         dataref <- substr (x = col_dataref, start = 10, stop = 19)
     
     # Cria data.frame contendo objetos previamente criados:
-    df <- data.frame(ccvm, doc, dataref, ndoc, urls) %>%
-        # Seleciona tipo de documento de interesse e data de referência:
-        filter(doc == tipo_doc, dataref == data_ref)
-
+    df <- data.frame(ccvm, doc, dataref, ndoc, urls)
+    
+    # Opcional: retorna data.frame contendo todo o banco de dados do download múltiplo da CVM:
+#    banco_dados <<- df
+#}
+    
 ### PASSO 2: BAIXAR DADOS FINANCEIROS BRUTOS
     
+    # Seleciona tipo de documento de interesse e data de referência:
+    df <- filter(df, doc == tipo_doc, dataref == data_ref)
+
     # Objetos a serem usados para armazenamento dos dados:
     info_fin <- data.table()
     
