@@ -57,7 +57,6 @@ download_multiplo <- function(n1, n2){
         dtref <- substr(x = arq, start = 7, stop = 14)
         tdoc <- substr(x = arq, start = nchar(arq)-2, stop = nchar(arq))
         
-        # for (j in (1:(n2-n1+1)))
         # Atualiza contador:
         j <- j+1
             
