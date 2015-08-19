@@ -1,0 +1,83 @@
+# DOWNLOAD DADOS MÚLTIPLO CVM
+# MÉTODO: ALTERAÇÃO nº DOC NO LINK
+# CRIAÇÃO DE LISTA/DATA FRAME CONSOLIDANDO OS LINKS E DEMAIS CAMPOS EM VETORES
+
+setwd(dir = "D:/Users/TPBAR/Documents")
+
+download_multiplo <- function(n1, n2){
+# n1 e n2: ndoc início e fim
+    
+    # Define diretório de trabalho:
+    setwd(dir = "./CVM teste 20150720/download_multiplo/")
+    
+    # Cria vetores para armazenamento dos dados:
+    endereco <- vector(length = n2-n1+1)
+    arquivo <- vector(length = n2-n1+1)
+    ccvm <- vector(length = n2-n1+1)
+    tipodoc <- vector(length = n2-n1+1)
+    dataref <- vector(length = n2-n1+1)
+    
+    # Define contador para armazenamento dos dados:
+    j <- 0
+        
+    for (i in (n1:n2)){
+        
+        # Estrutura endereço do link:
+        end <- "http://www.rad.cvm.gov.br/ENETCONSULTA/frmDownloadDocumento.aspx?CodigoInstituicao=1&NumeroSequencialDocumento="
+        
+        # Nomeia arquivo baixado:
+        filename <- "download.zip"
+        
+        # Baixa dados CVM:
+        try(expr = {
+            download.file(paste0(end, i), destfile = filename, mode = "wb", quiet = T)
+        }, silent = T)
+        
+        # Descompacta arquivo:
+        unzip(zipfile = filename)
+        
+        # Remove arquivo "*.zip":
+        file.remove(filename)
+        
+        # Seleciona dados do arquivo baixado para estruturar a lista/data frame:
+            
+            # Lista arquivos descompactados:
+            allfiles <- list.files()
+            # Lista arquivos .xml:
+            xml_files <- list.files(pattern = ".xml")
+            # Lista arquivos correspondentes ao tipo de documento enviado pelo link da CMV
+            if (length(allfiles[!allfiles %in% xml_files]) == 1)
+                arq <- allfiles[!allfiles %in% xml_files]
+            if (length(allfiles[!allfiles %in% xml_files]) > 1){
+                fca_files <- list.files(pattern = ".fca")
+                arq <- allfiles[!allfiles %in% c(xml_files, fca_files)]
+            }
+        
+        codcvm <- substr(x = arq, start = 1, stop = 6)
+        dtref <- substr(x = arq, start = 7, stop = 14)
+        tdoc <- substr(x = arq, start = nchar(arq)-2, stop = nchar(arq))
+        
+        # for (j in (1:(n2-n1+1)))
+        # Atualiza contador:
+        j <- j+1
+            
+        # Armazena dados nos vetores previamente criados:
+        endereco [j] <- paste0(end, i)
+        arquivo [j] <- arq
+        ccvm[j] <- codcvm
+        tipodoc[j] <- tdoc
+        dataref[j] <- dtref
+        
+        # Exclui arquivos:
+        file.remove(list.files(pattern = ".xml"))
+        file.remove(list.files(pattern = ".zip"))
+        file.remove(list.files(pattern = ".fca"))
+        file.remove(list.files(pattern = ".fre"))
+        file.remove(list.files(pattern = ".dfp"))
+        file.remove(list.files(pattern = ".itr"))
+        file.remove(list.files(pattern = ".sec"))
+    }
+    # Cria e retorna lista/data frame consolidando vetores:
+    lista_vetores <<- list(endereco, arquivo, ccvm, tipodoc, dataref)
+    # df <<- data.frame(lista_vetores[[1]], lista_vetores[[2]], lista_vetores[[3]], lista_vetores[[4]], lista_vetores[[5]], col.names=c(endereco, arquivo,ccvm,tipodoc,dataref))
+}
