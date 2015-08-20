@@ -44,21 +44,21 @@ download_multiplo <- function(n1, n2){
         
         # Seleciona dados do arquivo baixado para estruturar a lista/data frame:
         
-        # Lista arquivos descompactados:
-        allfiles <- list.files()
-        # Lista arquivos .xml:
-        xml_files <- list.files(pattern = ".xml")
-        # Lista arquivos correspondentes ao tipo de documento enviado pelo link da CMV
-        if (length(allfiles[!allfiles %in% xml_files]) == 1)
-            arq <- allfiles[!allfiles %in% xml_files]
-        if (length(allfiles[!allfiles %in% xml_files]) > 1){
-            fca_files <- list.files(pattern = ".fca")
-            arq <- allfiles[!allfiles %in% c(xml_files, fca_files)]
-        }
-        
-        codcvm <- substr(x = arq, start = 1, stop = 6)
-        dtref <- substr(x = arq, start = 7, stop = 14)
-        tdoc <- substr(x = arq, start = nchar(arq)-2, stop = nchar(arq))
+            # Lista arquivos descompactados:
+            allfiles <- list.files()
+            # Lista arquivos .xml:
+            xml_files <- list.files(pattern = ".xml")
+            # Lista arquivos correspondentes ao tipo de documento enviado pelo link da CMV
+            if (length(allfiles[!allfiles %in% xml_files]) == 1)
+                arq <- allfiles[!allfiles %in% xml_files]
+            if (length(allfiles[!allfiles %in% xml_files]) > 1){
+                fca_files <- list.files(pattern = ".fca")
+                arq <- allfiles[!allfiles %in% c(xml_files, fca_files)]
+            }
+            
+            codcvm <- substr(x = arq, start = 1, stop = 6)
+            dtref <- substr(x = arq, start = 7, stop = 14)
+            tdoc <- substr(x = arq, start = nchar(arq)-2, stop = nchar(arq))
         
         # Atualiza contador:
         j <- j+1
@@ -81,11 +81,15 @@ download_multiplo <- function(n1, n2){
     }
     # Cria e retorna lista/data frame consolidando vetores:
     lista_vetores <<- list(endereco, arquivo, ccvm, tipodoc, dataref)
-    # df <<- data.frame(lista_vetores[[1]], lista_vetores[[2]], lista_vetores[[3]], lista_vetores[[4]], lista_vetores[[5]], col.names=c(endereco, arquivo,ccvm,tipodoc,dataref))
+    dfr <<- data.frame(endereco = lista_vetores[[1]],
+                       arquivo = lista_vetores[[2]],
+                       ccvm = lista_vetores[[3]],
+                       tipodoc = lista_vetores[[4]],
+                       dataref = lista_vetores[[5]])
     
     # Registra instante do término da rodada do algoritmo:
     Tf <- proc.time()
     # Retorna tempo decorrido (em segundos):
     Td <- Tf-Ti
-    T_decorrido_seg <<- Td[3]
+    T_decorrido <<- Td[3]
 }
