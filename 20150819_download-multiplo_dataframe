@@ -93,3 +93,14 @@ download_multiplo <- function(n1, n2){
     Td <- Tf-Ti
     T_decorrido <<- Td[3]
 }
+
+# CONSULTA DA DATA FRAME GERADA NO DOWNLOAD MÚLTIPLO AUTOMÁTICO
+
+filtro <- function(tdoc, dtref){
+    require(data.table)
+    require(dplyr)
+    
+    dtfr <<- tbl_df(dfr) %>%
+        filter(tipodoc == tdoc) %>%
+        filter(dataref == dtref)
+}
