@@ -92,6 +92,9 @@ download_multiplo <- function(n1, n2){
     # Retorna tempo decorrido (em segundos):
     Td <- Tf-Ti
     T_decorrido <<- Td[3]
+    
+    # Salva arquivo .RData ao final da rodada, de modo a salvar os objetos gerados:
+    save.image("~/downl_CVM.RData")
 }
 
 # CONSULTA DA DATA FRAME GERADA NO DOWNLOAD MÚLTIPLO AUTOMÁTICO
