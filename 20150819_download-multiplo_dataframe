@@ -25,6 +25,9 @@ download_multiplo <- function(n1, n2){
     
     for (i in (n1:n2)){
         
+        # Exibe nº i para cada ciclo da rodada:
+        show(i)
+        
         # Estrutura endereço do link:
         end <- "http://www.rad.cvm.gov.br/ENETCONSULTA/frmDownloadDocumento.aspx?CodigoInstituicao=1&NumeroSequencialDocumento="
         
