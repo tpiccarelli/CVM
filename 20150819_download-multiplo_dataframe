@@ -81,6 +81,7 @@ download_multiplo <- function(n1, n2){
         file.remove(list.files(pattern = ".dfp"))
         file.remove(list.files(pattern = ".itr"))
         file.remove(list.files(pattern = ".sec"))
+        file.remove(list.files(pattern = ".ipe"))
     }
     # Cria e retorna lista/data frame consolidando vetores:
     lista_vetores <<- list(endereco, arquivo, ccvm, tipodoc, dataref)
