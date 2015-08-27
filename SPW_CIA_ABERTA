@@ -1,0 +1,65 @@
+# Tratamento arquivo SPW_CIA_ABERTA:
+
+    # Origem: http://sistemas.cvm.gov.br/?mapa
+    # Download: http://sistemas.cvm.gov.br/cadastro/SPW_CIA_ABERTA.ZIP
+    download.file(url = "http://sistemas.cvm.gov.br/cadastro/SPW_CIA_ABERTA.ZIP", destfile = "SPW_CIA_ABERTA.ZIP", quiet = T)
+    # Obs.: estas etapas não podem ser lidas no R, pois o arquivo é incompatível à condição header=T do comando read.table
+    
+    # Descompactar arquivo .txt:
+    unzip(zipfile = "./SPW_CIA_ABERTA.ZIP")
+    file.remove("SPW_CIA_ABERTA.ZIP")
+    
+    # Importar manualmente dados para arquivo Excel (.xlsx)
+    ### Formatar coluna "CODIGO_CVM" como texto, com extensão de 6 caracteres
+    ### Formatar dados coluna SETOR_ATIVIDADE:
+    ##### Substituir "EMP. ADM. PARTICIPAÇÕES - " por ""
+    ##### Padronizar registros cuja denominação difere (p. ex.: "CONSTR. CIVIL, MAT.CONSTR. DECORAÇÃO" e "CONSTRUÇÃO CIVIL, MAT. CONSTR. E DECORAÇÃO")
+    ### Aplicar função =ARRUMAR() nas colunas DENOMINACAO_SOCIAL e DENOMINACAO_COMERCIAL
+    
+    # Ler arquivo gerado no R:
+    spw <- read.xlsx2(file = "SPW_CIA_ABERTA.xlsx", sheetIndex = 1)
+    
+    # Gerar versão resumida:
+    spw_resumido <- select(spw, CODIGO_CVM, DENOMINACAO_SOCIAL, DENOMINACAO_COMERCIAL, SETOR_ATIVIDADE, CNPJ, SITUACAO_REGISTRO) %>%
+        filter(SITUACAO_REGISTRO=="ATIVO")
+
+# CVM: Consulta de Documentos de Companhias Abertas
+    # sistemas.cvm.gov.br > http://cvmweb.cvm.gov.br/SWB/Sistemas/SCW/CPublica/CiaAb/FormBuscaCiaAb.aspx?TipoConsult=c
+    # Lançar resultados em arquivo .txt
+    # Importar no Excel
+    ### Formatar CNPJ: eliminar ". - /" e formatar como valor
+    ### CODIGO_CVM: formatar como =TEXTO(A2;"000000")
+    ### "SITUAÇÃO REGISTRO": dividir em 2 colunas: SITUACAO e REGISTRO, usando funções =ESQUERDA() e =DIREITA()
+    ### Aplicar função =ARRUMAR() nas colunas DENOMINACAO_SOCIAL e DENOMINACAO_COMERCIAL
+    ### Salvar arquivo Excel: baseCVM.xlsx
+    # Ler base no R:
+    base_CVM <- read.xlsx2(file = "baseCVM.xlsx", sheetIndex = 1)
+    
+# Classificação setorial site BMFBovespa: http://www.bmfbovespa.com.br/cias-listadas/empresas-listadas/BuscaEmpresaListada.aspx?opcao=1&indiceAba=1&Idioma=pt-br
+    # Download: http://www.bmfbovespa.com.br/pt-br/download/ClassifSetorial.zip
+    download.file(url = "http://www.bmfbovespa.com.br/pt-br/download/ClassifSetorial.zip", destfile = "ClassifSetorial.zip", quiet = T)
+    unzip(zipfile = "./ClassifSetorial.zip")
+    file.remove("./ClassifSetorial.zip")
+    
+    # Tratar manualmente arquivo "ClassifSetorial.xlsx":
+    ### Inserir nova coluna "Segmento", desmesclar células, renomear coluna referente ao segmento da bolsa, etc.
+    ### Aplicar função =ARRUMAR() na coluna NOME_PREGAO
+    
+    # Ler arquivo resultante:
+    setor_2T15 <- read.xlsx2(file = "ClassifSetorial_2T15.xlsx", sheetIndex = 1, header = T)
+
+# Capital social das empresas site BMFBovespa: http://www.bmfbovespa.com.br/cias-listadas/consultas/capital-social-das-empresas.aspx?Idioma=pt-br
+    # Download: http://www.bmfbovespa.com.br/pt-br/download/ClassifSetorial.zip
+    download.file(url = "http://www.bmfbovespa.com.br/pt-br/mercados/download/CapitalSocial.zip", destfile = "CapitalSocial.zip", quiet = T)
+    unzip(zipfile = "./CapitalSocial.zip")
+    file.remove("./CapitalSocial.zip")
+    
+    # Tratar manualmente arquivo "CapitalSocial.xlsx":
+    ### Eliminar linhas "Tipo de capital: Subscrito"
+    ### Desmesclar células títulos
+    ### Eliminar colunas referentes ao detalhamento das ações PN
+    ### Aplicar função =ARRUMAR() nas colunas NOME_PREGAO e DENOMINACAO_SOCIAL
+    ##### ESTE ARQUIVO CONTÉM DADOS PARA REFERENCIAR-SE ÀS DEMAIS BASES DE DADOS AQUI TRATADAS
+    
+    # Ler arquivo resultante:
+    acoes_2T15 <- read.xlsx2(file = "Capital-Social-das-Empresas_2T15.xlsx", sheetIndex = 1, header = T)
