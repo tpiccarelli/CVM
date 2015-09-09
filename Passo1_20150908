@@ -88,7 +88,7 @@ download_multiplo <- function(n1, n2){
         }
         
         # Testa se há conteúdo no arquivo 'download.zip' e executa procedimentos caso NÃO exista:
-        if (file.size(filename) <= 4096){
+        else {
             
             # Atualiza contador:
             j <- j+1
