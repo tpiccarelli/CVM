@@ -1,0 +1,13 @@
+cvm <- "https://WWW.RAD.CVM.GOV.BR/DOWNLOAD/SolicitaDownload.asp"
+dia <- "2015-09-15"
+
+login <- list(txtLogin = "397DWLTPB",
+              txtSenha = "petrobR9",
+              txtData = format(as.Date(dia), "%d/%m/%Y"), 
+              txtHora = "00:00",
+              txtDocumento = "TODOS")
+
+acesso <- POST(url = cvm, 
+               body = login,
+               encode = "form",
+               verbose())
